@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAL-PRODUCT // Pricing Calculator & Margin Engine</title>
+    <meta name="description" content="A premium, high-fidelity pricing calculator and precision margin engine with responsive asymmetrical split-screen history comparison.">
+    <!-- Open Graph SEO Metadata -->
+    <meta property="og:title" content="CAL-PRODUCT // Pricing Calculator & Margin Engine">
+    <meta property="og:description" content="A premium, high-fidelity pricing calculator and precision margin engine with responsive asymmetrical split-screen history comparison.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cal-product.local">
+    <meta property="og:image" content="https://cal-product.local/assets/og-preview.png">
+    <!-- Google Fonts: Outfit (Brand) and JetBrains Mono (Technical/Data) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- HEADER: Brand Bar -->
+        <header class="app-header">
+            <div class="header-logo">
+                <span class="logo-accent">//</span>
+                <h1>CAL-PRODUCT</h1>
+                <span class="logo-sub">MARGIN.v1</span>
+            </div>
+            <div class="header-controls">
+                <button class="btn btn-secondary btn-sm" id="btn-toggle-history" style="margin-right: 0.75rem;">📋 VIEW HISTORY</button>
+                <span class="system-status">
+                    <span class="status-dot green"></span>
+                    ONLINE
+                </span>
+            </div>
+        </header>
+
+        <!-- MAIN WORKSPACE -->
+        <main class="app-workspace">
+            <!-- SIDEBAR: Project History Deck -->
+            <aside class="history-deck" id="history-deck">
+                <div class="deck-header">
+                    <h2>MY PROJECTS</h2>
+                    <span class="deck-counter" id="project-count">0 PROJECTS</span>
+                </div>
+                
+                <!-- Search & Filters -->
+                <div class="deck-search-box">
+                    <input type="text" id="search-input" placeholder="Search projects by name..." autocomplete="off">
+                    <span class="search-icon">🔍</span>
+                </div>
+
+                <!-- Backup & Restore Buttons -->
+                <div class="deck-portability">
+                    <button class="btn btn-secondary btn-sm" id="btn-export-backup" title="Export all projects as JSON">
+                        📥 BACKUP DATA
+                    </button>
+                    <label class="btn btn-secondary btn-sm btn-file-upload" title="Restore projects from JSON backup">
+                        📤 RESTORE DATA
+                        <input type="file" id="import-file-input" accept=".json" style="display: none;">
+                    </label>
+                </div>
+
+                <!-- History List -->
+                <div class="deck-list-container">
+                    <ul class="deck-list" id="project-list">
+                        <!-- Dynamic project cards go here -->
+                        <li class="deck-empty-state">
+                            <div class="empty-icon">📂</div>
+                            <p>No projects saved yet.</p>
+                            <span class="empty-sub">Run a pricing calculation and save it here.</span>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- MAIN WORKSPACE CONTENT: Form & Calculations -->
+            <div class="workspace-content">
+                <!-- Workspace A: Current Live Calculation -->
+                <section class="calc-panel current-panel" id="current-calc-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="panel-num">01</span>
+                            <h2>PRICING SPECIFICATION</h2>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-outline" id="btn-download-report" title="Download report as PNG image">🖼️ DOWNLOAD</button>
+                            <button class="btn btn-primary" id="btn-save-project">💾 SAVE PROJECT</button>
+                            <button class="btn btn-outline" id="btn-reset-form">🆕 NEW PROJECT</button>
+                        </div>
+                    </div>
+
+                    <form class="calc-form" id="calc-form" onsubmit="return false;">
+                        <div class="form-grid">
+                            <!-- Left Column: Product Meta -->
+                            <div class="form-group">
+                                <label for="project-date">Project Date (วันที่โปรเจกต์)</label>
+                                <input type="date" id="project-date" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="project-name">Product Name (ชื่อสินค้า)</label>
+                                <input type="text" id="project-name" placeholder="ระบุชื่อโปรเจกต์" required autocomplete="off">
+                            </div>
+
+                            <div class="form-group full-width" style="grid-column: span 2;">
+                                <label for="project-detail">Specifications (รายละเอียดเพิ่มเติม)</label>
+                                <textarea id="project-detail" placeholder="ระบุสเปคหรือข้อมูลจำเพาะ..." autocomplete="off" rows="3"></textarea>
+                            </div>
+
+                            <div class="url-references-grid">
+                                <div class="form-group">
+                                    <label for="project-url-1">Reference URL 1 (ลิงก์อ้างอิง 1)</label>
+                                    <div class="input-wrapper">
+                                        <input type="url" id="project-url-1" placeholder="https://..." autocomplete="off" style="padding-right: 2.75rem;">
+                                        <a href="#" id="btn-visit-url-1" target="_blank" class="input-suffix url-action-btn disabled" title="เปิดลิงก์อ้างอิง">🔗</a>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="project-url-2">Reference URL 2 (ลิงก์อ้างอิง 2)</label>
+                                    <div class="input-wrapper">
+                                        <input type="url" id="project-url-2" placeholder="https://..." autocomplete="off" style="padding-right: 2.75rem;">
+                                        <a href="#" id="btn-visit-url-2" target="_blank" class="input-suffix url-action-btn disabled" title="เปิดลิงก์อ้างอิง">🔗</a>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="project-url-3">Reference URL 3 (ลิงก์อ้างอิง 3)</label>
+                                    <div class="input-wrapper">
+                                        <input type="url" id="project-url-3" placeholder="https://..." autocomplete="off" style="padding-right: 2.75rem;">
+                                        <a href="#" id="btn-visit-url-3" target="_blank" class="input-suffix url-action-btn disabled" title="เปิดลิงก์อ้างอิง">🔗</a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Factory Cost Inputs -->
+                            <div class="form-group">
+                                <label for="input-exw">EXW Price (ราคาโรงงาน)</label>
+                                <div class="input-wrapper">
+                                    <span class="input-prefix">¥</span>
+                                    <input type="number" id="input-exw" min="0" placeholder="0" required autocomplete="off">
+                                </div>
+                                <span class="input-hint">Unit price at factory in Yen</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-exc">EXC Rate (อัตราแลกเปลี่ยน)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="input-exc" step="any" min="0" placeholder="0.00" required autocomplete="off">
+                                    <span class="input-suffix">THB/¥</span>
+                                </div>
+                                <span class="input-hint">Exchange rate to Thai Baht</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-quantity">Quantity (จำนวนสินค้า)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="input-quantity" min="1" value="1" required autocomplete="off">
+                                    <span class="input-suffix">PCS</span>
+                                </div>
+                                <span class="input-hint">Total volume in units</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-base-price">Base Price (ราคารวมต้นทาง)</label>
+                                <div class="input-wrapper">
+                                    <span class="input-prefix">฿</span>
+                                    <input type="text" id="input-base-price" readonly style="background-color: var(--color-bg-deep); border-color: var(--color-border-low);" value="฿0">
+                                </div>
+                                <span class="input-hint">Calculated base price in Baht</span>
+                            </div>
+
+                            <!-- Row 3: Operations & Profits Margin -->
+                            <div class="form-group">
+                                <label for="input-shipping">Overseas Shipping (ค่าขนส่งต่างประเทศ)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="input-shipping" min="0" placeholder="0" required autocomplete="off">
+                                    <span class="input-suffix">%</span>
+                                </div>
+                                <span class="input-hint">Percent of base price</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="input-packing">Domestic & Packing (ค่าดำเนินการ)</label>
+                                <div class="input-wrapper">
+                                    <input type="number" id="input-packing" min="0" placeholder="0" required autocomplete="off">
+                                    <span class="input-suffix">%</span>
+                                </div>
+                                <span class="input-hint">Percent of base + shipping cost</span>
+                            </div>
+
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="input-gp" style="color: var(--color-positive);">GP Margin (กำไรที่ต้องการ)</label>
+                                <div class="input-wrapper" style="border-left: 2px solid var(--color-positive);">
+                                    <input type="number" id="input-gp" min="0" max="99" placeholder="0" required autocomplete="off" style="border-color: var(--color-border-med);">
+                                    <span class="input-suffix" style="color: var(--color-positive);">%</span>
+                                </div>
+                                <span class="input-hint">Target Gross Profit margin</span>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Outputs: Live Calculation Results -->
+                    <div class="calc-outputs" id="live-outputs" style="grid-template-columns: 1fr 1fr; margin-top: 1rem; gap: 0.75rem;">
+                        <!-- Row 1: Operational Breakdowns (Sea & Dom) -->
+                        <div class="output-card card-profit" style="border-left-color: #d97706; padding: 1rem 1.25rem;">
+                            <span class="output-label">SHIPPING COST (ค่าขนส่งรวม - Sea)</span>
+                            <div class="output-value" id="out-total-sea" style="color: #fb923c; font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub" id="out-sub-sea-unit">Per Unit: ฿0</span>
+                        </div>
+
+                        <div class="output-card card-profit" style="border-left-color: #d97706; padding: 1rem 1.25rem;">
+                            <span class="output-label">DOMESTIC COST (ค่าดำเนินการรวม - Dom)</span>
+                            <div class="output-value" id="out-total-dom" style="color: #fb923c; font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub" id="out-sub-dom-unit">Per Unit: ฿0</span>
+                        </div>
+
+                        <!-- Row 2: Costs Totals -->
+                        <div class="output-card card-profit" style="border-left-color: #fb923c; padding: 1rem 1.25rem;">
+                            <span class="output-label">COST PER UNIT (ต้นทุนต่อชิ้น)</span>
+                            <div class="output-value" id="out-cost-per-unit" style="color: #f97316; font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub">Production cost per item</span>
+                        </div>
+
+                        <div class="output-card card-profit" style="border-left-color: #fb923c; padding: 1rem 1.25rem;">
+                            <span class="output-label">TOTAL COST (ต้นทุนรวมทั้งหมด)</span>
+                            <div class="output-value" id="out-total-cost" style="color: #f97316; font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub">Accumulated expenditures</span>
+                        </div>
+
+                        <!-- Row 3: Profit Margins -->
+                        <div class="output-card card-roi" style="border-left-color: var(--color-positive); padding: 1rem 1.25rem;">
+                            <span class="output-label">PROFIT PER UNIT (กำไรต่อชิ้น)</span>
+                            <div class="output-value" id="out-profit-per-unit" style="color: var(--color-positive); font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub">Gross margin per item</span>
+                        </div>
+
+                        <div class="output-card card-roi" style="border-left-color: var(--color-positive); padding: 1rem 1.25rem;">
+                            <span class="output-label">TOTAL PROFIT (กำไรรวม)</span>
+                            <div class="output-value" id="out-total-profit" style="color: var(--color-positive); font-size: 1.3rem;">฿0</div>
+                            <span class="output-sub">Aggregated margins yield</span>
+                        </div>
+
+                        <!-- Row 4: Recommended Target -->
+                        <div class="output-card card-payback" style="grid-column: span 2; border-left-color: var(--color-accent); background-color: var(--color-accent-dim); border: 2px solid var(--color-accent); padding: 1.25rem 1.5rem;">
+                            <span class="output-label" style="color: white; font-weight:700;">SELLING PRICE PER UNIT (ราคาขายต่อชิ้น)</span>
+                            <div class="output-value" id="out-price-per-unit" style="font-size: 2.2rem; color: white;">฿0</div>
+                            <span class="output-sub" style="color: rgba(255,255,255,0.7);">Recommended selling price</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Workspace B: Comparative History Overlay Panel (Visible in comparison mode) -->
+                <section class="calc-panel comparative-panel collapsed" id="comparative-calc-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="panel-num">02</span>
+                            <h2>COMPARISON SPECIFICATION</h2>
+                        </div>
+                        <div class="panel-actions">
+                            <button class="btn btn-outline btn-sm" id="btn-download-comp-report" title="Download comparison report as PNG image" style="margin-right: 0.5rem;">🖼️ DOWNLOAD</button>
+                            <span class="compare-badge" id="compare-project-badge">No project selected</span>
+                            <button class="btn-close" id="btn-close-comparison" title="Exit comparison mode">✕</button>
+                        </div>
+                    </div>
+
+                    <div class="comparative-details">
+                        <!-- Selected Historical Config Info -->
+                        <div class="comp-config-summary">
+                            <div class="comp-meta-row">
+                                <span class="comp-meta-label">Selected Run:</span>
+                                <span class="comp-meta-val" id="comp-meta-name">-</span>
+                            </div>
+                            <div class="comp-meta-row">
+                                <span class="comp-meta-label">Saved At:</span>
+                                <span class="comp-meta-val" id="comp-meta-date">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Side-by-side Input Specifications -->
+                        <div class="comp-comparison-list">
+                            <h3>PARAMETER DELTAS</h3>
+                            
+                            <div class="comp-item" id="comp-row-exw">
+                                <span class="comp-item-label">EXW Price</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-exw">¥0</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-exw">¥0</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-exw">0.0%</span>
+                            </div>
+
+                            <div class="comp-item" id="comp-row-exc">
+                                <span class="comp-item-label">EXC Rate</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-exc">0.00</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-exc">0.00</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-exc">0.0%</span>
+                            </div>
+
+                            <div class="comp-item" id="comp-row-qty">
+                                <span class="comp-item-label">Quantity</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-qty">0 PCS</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-qty">0 PCS</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-qty">0.0%</span>
+                            </div>
+
+                            <div class="comp-item" id="comp-row-shipping">
+                                <span class="comp-item-label">Sea Shipping</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-shipping">0%</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-shipping">0%</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-shipping">0.0%</span>
+                            </div>
+
+                            <div class="comp-item" id="comp-row-packing">
+                                <span class="comp-item-label">Dom Packing</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-packing">0%</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-packing">0%</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-packing">0.0%</span>
+                            </div>
+
+                            <div class="comp-item" id="comp-row-gp">
+                                <span class="comp-item-label">GP Margin</span>
+                                <div class="comp-values">
+                                    <span class="val-past" id="comp-past-gp">0%</span>
+                                    <span class="val-arrow">→</span>
+                                    <span class="val-current" id="comp-curr-gp">0%</span>
+                                </div>
+                                <span class="comp-delta" id="comp-delta-gp">0.0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Results Deltas Comparison -->
+                        <div class="comp-results-deck">
+                            <h3>METRIC COMPOSITIONS</h3>
+                            
+                            <div class="comp-result-card" id="comp-metric-cost" style="border-left-color: #fb923c;">
+                                <div class="comp-metric-meta">
+                                    <span class="comp-metric-title">TOTAL COST (ต้นทุนรวมทั้งหมด)</span>
+                                    <span class="comp-metric-diff" id="comp-diff-cost">฿0</span>
+                                </div>
+                                <div class="comp-metric-values">
+                                    <div class="val-block">
+                                        <span class="lbl">HISTORICAL</span>
+                                        <span class="val" id="comp-past-cost">฿0</span>
+                                    </div>
+                                    <div class="val-block">
+                                        <span class="lbl">CURRENT</span>
+                                        <span class="val" id="comp-curr-cost">฿0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="comp-result-card" id="comp-metric-profit" style="border-left-color: var(--color-positive);">
+                                <div class="comp-metric-meta">
+                                    <span class="comp-metric-title">TOTAL PROFIT (กำไรรวม)</span>
+                                    <span class="comp-metric-diff" id="comp-diff-profit">฿0</span>
+                                </div>
+                                <div class="comp-metric-values">
+                                    <div class="val-block">
+                                        <span class="lbl">HISTORICAL</span>
+                                        <span class="val" id="comp-past-profit">฿0</span>
+                                    </div>
+                                    <div class="val-block">
+                                        <span class="lbl">CURRENT</span>
+                                        <span class="val" id="comp-curr-profit">฿0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="comp-result-card" id="comp-metric-unit-price" style="border-left-color: var(--color-accent);">
+                                <div class="comp-metric-meta">
+                                    <span class="comp-metric-title">SELLING PRICE PER UNIT (ราคาขายต่อชิ้น)</span>
+                                    <span class="comp-metric-diff" id="comp-diff-unit-price">฿0</span>
+                                </div>
+                                <div class="comp-metric-values">
+                                    <div class="val-block">
+                                        <span class="lbl">HISTORICAL</span>
+                                        <span class="val" id="comp-past-unit-price">฿0</span>
+                                    </div>
+                                    <div class="val-block">
+                                        <span class="lbl">CURRENT</span>
+                                        <span class="val" id="comp-curr-unit-price">฿0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Dynamic Toast Notification Area -->
+        <div class="toast-container" id="toast-container"></div>
+    </div>
+
+    <!-- Application Script Modules -->
+    <script type="module" src="js/calculator.js"></script>
+    <script type="module" src="js/history.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
