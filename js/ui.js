@@ -131,7 +131,26 @@ export function init() {
     // Setup initial cloud status badge
     updateCloudStatusBadge();
 
-    // Trigger cloud background sync on launch
+    // Boot security authorization guard checks
+    const activeUser = sessionStorage.getItem('calc_active_user');
+    const loginOverlay = document.getElementById('login-overlay');
+    
+    if (!activeUser) {
+        if (loginOverlay) {
+            loginOverlay.classList.add('active');
+        }
+    } else {
+        if (loginOverlay) {
+            loginOverlay.classList.remove('active');
+        }
+        triggerInitialCloudSync();
+    }
+}
+
+/**
+ * Triggers database sync in background after authentication success.
+ */
+function triggerInitialCloudSync() {
     if (history.isSupabaseConfigured()) {
         history.syncFromCloud().then(res => {
             if (res.success && res.changed) {
@@ -261,6 +280,164 @@ function registerEventListeners() {
             el.historyDeck.classList.remove('open');
         }
     });
+
+    // --- Enterprise Security Auth Bindings ---
+    
+    // Login Submission
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnLogin = document.getElementById('btn-login');
+            const userField = document.getElementById('login-username');
+            const passField = document.getElementById('login-password');
+            if (!userField || !passField) return;
+
+            const username = userField.value.trim();
+            const password = passField.value.trim();
+            if (!username || !password) return;
+
+            if (btnLogin) {
+                btnLogin.disabled = true;
+                btnLogin.textContent = '🔒 AUTHENTICATING...';
+            }
+
+            try {
+                const res = await history.validateLogin(username, password);
+                if (res.success) {
+                    sessionStorage.setItem('calc_active_user', username);
+                    history.writeAuthLog(username);
+                    
+                    const loginOverlay = document.getElementById('login-overlay');
+                    if (loginOverlay) {
+                        loginOverlay.classList.remove('active');
+                    }
+                    showToast('ยินดีต้อนรับ! เข้าสู่ระบบสำเร็จ 🟢', 'success');
+                    triggerInitialCloudSync();
+                } else {
+                    showToast('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง! 🔴', 'error');
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                showToast('เกิดข้อผิดพลาดในการเชื่อมต่อระบบความปลอดภัย 🔴', 'error');
+            } finally {
+                if (btnLogin) {
+                    btnLogin.disabled = false;
+                    btnLogin.textContent = '🔑 ENTER WORKSPACE';
+                }
+            }
+        });
+    }
+
+    // Toggle password eye accessory
+    const btnLoginEye = document.getElementById('btn-login-eye');
+    if (btnLoginEye) {
+        btnLoginEye.addEventListener('click', () => {
+            const passField = document.getElementById('login-password');
+            if (passField) {
+                if (passField.type === 'password') {
+                    passField.type = 'text';
+                    btnLoginEye.textContent = '🕶️';
+                } else {
+                    passField.type = 'password';
+                    btnLoginEye.textContent = '👁️';
+                }
+            }
+        });
+    }
+
+    // Sidebar: Change credentials button click opens modal
+    const btnChangeCreds = document.getElementById('btn-change-credentials');
+    const changePassModal = document.getElementById('change-pass-modal');
+    if (btnChangeCreds && changePassModal) {
+        btnChangeCreds.addEventListener('click', () => {
+            changePassModal.style.display = 'flex';
+            const oldPass = document.getElementById('change-old-pass');
+            if (oldPass) oldPass.focus();
+        });
+    }
+
+    // Close change pass modal buttons
+    const btnCloseChangePass = document.getElementById('btn-close-change-pass');
+    const btnCancelChangePass = document.getElementById('btn-cancel-change-pass');
+    if (btnCloseChangePass) {
+        btnCloseChangePass.addEventListener('click', () => {
+            changePassModal.style.display = 'none';
+        });
+    }
+    if (btnCancelChangePass) {
+        btnCancelChangePass.addEventListener('click', () => {
+            changePassModal.style.display = 'none';
+        });
+    }
+
+    // Change credentials form submission
+    const changePassForm = document.getElementById('change-pass-form');
+    if (changePassForm) {
+        changePassForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSubmit = document.getElementById('btn-submit-change-pass');
+            const oldPassField = document.getElementById('change-old-pass');
+            const newUserField = document.getElementById('change-new-user');
+            const newPassField = document.getElementById('change-new-pass');
+            if (!oldPassField || !newUserField || !newPassField) return;
+
+            const oldPass = oldPassField.value.trim();
+            const newUser = newUserField.value.trim();
+            const newPass = newPassField.value.trim();
+
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = '💾 SAVING...';
+            }
+
+            try {
+                const res = await history.changeCredentials(oldPass, newUser, newPass);
+                if (res.success) {
+                    sessionStorage.setItem('calc_active_user', newUser);
+                    changePassModal.style.display = 'none';
+                    oldPassField.value = '';
+                    newUserField.value = '';
+                    newPassField.value = '';
+                    showToast('ปรับปรุงข้อมูลความปลอดภัยสำเร็จ 🟢', 'success');
+                } else {
+                    showToast('รหัสผ่านปัจจุบันไม่ถูกต้อง! 🔴', 'error');
+                }
+            } catch (err) {
+                console.error('Password change error:', err);
+                showToast('เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน 🔴', 'error');
+            } finally {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.textContent = '💾 UPDATE KEY';
+                }
+            }
+        });
+    }
+
+    // Sidebar: View access audits logs
+    const btnViewLogs = document.getElementById('btn-view-logs');
+    const logsModal = document.getElementById('logs-modal');
+    if (btnViewLogs && logsModal) {
+        btnViewLogs.addEventListener('click', () => {
+            logsModal.style.display = 'flex';
+            renderAccessLogs();
+        });
+    }
+
+    // Close logs modal button
+    const btnCloseLogs = document.getElementById('btn-close-logs');
+    if (btnCloseLogs) {
+        btnCloseLogs.addEventListener('click', () => {
+            logsModal.style.display = 'none';
+        });
+    }
+
+    // Refresh logs button
+    const btnRefreshLogs = document.getElementById('btn-refresh-logs');
+    if (btnRefreshLogs) {
+        btnRefreshLogs.addEventListener('click', renderAccessLogs);
+    }
 
 }
 
@@ -890,5 +1067,53 @@ function updateCloudStatusBadge() {
     } else {
         el.cloudStatusDot.className = 'status-dot orange';
         el.cloudStatusText.textContent = 'OFFLINE MODE';
+    }
+}
+
+/**
+ * Queries and renders the 50 most recent authentication and IP access log entries.
+ */
+async function renderAccessLogs() {
+    const tableBody = document.getElementById('logs-table-body');
+    const counter = document.getElementById('logs-counter');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 1.5rem; color: var(--color-text-muted);">🔄 Loading logs from database...</td></tr>`;
+
+    try {
+        const res = await history.getAuthLogs();
+        if (!res.success) {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 1.5rem; color: var(--color-negative);">❌ Failed to load logs: ${res.message}</td></tr>`;
+            return;
+        }
+
+        const logs = res.logs || [];
+        if (counter) counter.textContent = `Showing last ${logs.length} connections`;
+
+        if (logs.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 1.5rem; color: var(--color-text-muted);">No login events found.</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = logs.map(log => {
+            const dateStr = new Date(log.timestamp).toLocaleString('th-TH', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            return `
+                <tr style="border-bottom: 1px solid var(--color-border-low);">
+                    <td style="padding: 0.75rem; font-family: var(--font-mono);">${dateStr}</td>
+                    <td style="padding: 0.75rem; font-weight: 600;">${escapeHtml(log.username)}</td>
+                    <td style="padding: 0.75rem; font-family: var(--font-mono); color: var(--color-text-secondary);">${escapeHtml(log.ip_address)}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Failed rendering access logs:', e);
+        tableBody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 1.5rem; color: var(--color-negative);">❌ System exception loading logs.</td></tr>`;
     }
 }

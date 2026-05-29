@@ -449,3 +449,108 @@ export function duplicateProject(id) {
     
     return saveProject(duplicatedName, clonedInputs, clonedOutputs);
 }
+
+/**
+ * Validates user credentials using server-side RPC on Supabase (Zero password leaks to client).
+ */
+export async function validateLogin(username, password) {
+    if (!supabaseClient) return { success: false, message: 'Database client not connected.' };
+    try {
+        const { data, error } = await supabaseClient.rpc('verify_user_credentials', {
+            p_username: username,
+            p_password: password
+        });
+
+        if (error) {
+            console.error('Authentication error:', error);
+            return { success: false, message: error.message };
+        }
+
+        return { success: !!data };
+    } catch (e) {
+        console.error('Authentication exception:', e);
+        return { success: false, message: e.message || 'Authentication error.' };
+    }
+}
+
+/**
+ * Changes user credentials securely using server-side RPC (verifying old credentials).
+ */
+export async function changeCredentials(currentPassword, newUsername, newPassword) {
+    if (!supabaseClient) return { success: false, message: 'Database client not connected.' };
+    try {
+        const activeUser = sessionStorage.getItem('calc_active_user') || 'admin';
+        const { data, error } = await supabaseClient.rpc('change_user_credentials', {
+            p_username: activeUser,
+            p_old_password: currentPassword,
+            p_new_username: newUsername,
+            p_new_password: newPassword
+        });
+
+        if (error) {
+            console.error('Mutation error:', error);
+            return { success: false, message: error.message };
+        }
+
+        return { success: !!data };
+    } catch (e) {
+        console.error('Mutation exception:', e);
+        return { success: false, message: e.message || 'Failed to modify credentials.' };
+    }
+}
+
+/**
+ * Fetches the user's public IP address from ipify and logs the login event in auth_logs.
+ * Standardized try-catch avoids locking out users on strict network configurations or ad-blockers.
+ */
+export async function writeAuthLog(username) {
+    if (!supabaseClient) return;
+    let ipAddress = 'BLOCKED / OFFLINE IP';
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3-second timeout
+
+        const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            const json = await res.json();
+            ipAddress = json.ip || ipAddress;
+        }
+    } catch (e) {
+        console.warn('IP lookup bypassed (connection blocked or offline):', e);
+    }
+
+    try {
+        await supabaseClient
+            .from('auth_logs')
+            .insert([{ username, ip_address: ipAddress }]);
+    } catch (e) {
+        console.error('Failed to write access audit log:', e);
+    }
+}
+
+/**
+ * Retrieves the 50 most recent access logs.
+ */
+export async function getAuthLogs() {
+    if (!supabaseClient) return { success: false, message: 'Database client not connected.' };
+    try {
+        const { data, error } = await supabaseClient
+            .from('auth_logs')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(50);
+
+        if (error) {
+            console.error('Retrieve logs error:', error);
+            return { success: false, message: error.message };
+        }
+
+        return { success: true, logs: data || [] };
+    } catch (e) {
+        console.error('Retrieve logs exception:', e);
+        return { success: false, message: e.message || 'Failed to retrieve logs.' };
+    }
+}
+
