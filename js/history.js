@@ -11,8 +11,12 @@ let supabaseClient = null;
  * Initializes the Supabase client using stored credentials.
  */
 export function initSupabase() {
-    const url = localStorage.getItem('pricing_projects_supabase_url');
-    const key = localStorage.getItem('pricing_projects_supabase_key');
+    const defaultUrl = 'https://mfzilblyhrvbucqruqmq.supabase.co';
+    const defaultKey = 'sb_publishable_8XJ_w9u3fzybwdUrqXtDrQ_uxhXQJKG';
+
+    const url = localStorage.getItem('pricing_projects_supabase_url') || defaultUrl;
+    const key = localStorage.getItem('pricing_projects_supabase_key') || defaultKey;
+
     if (url && key) {
         try {
             supabaseClient = createClient(url.trim(), key.trim());
