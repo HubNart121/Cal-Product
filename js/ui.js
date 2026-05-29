@@ -799,18 +799,54 @@ function runCapture(targetId, fileName) {
     // Add capturing class to hide buttons and scrollbars
     targetElement.classList.add('capturing');
     
+    // Defensive Style Sheet Bypass: Temporarily disable external/injected sheets containing oklch
+    const disabledSheets = [];
+    for (let i = 0; i < document.styleSheets.length; i++) {
+        const sheet = document.styleSheets[i];
+        try {
+            if (sheet.href) {
+                // If it's not our main stylesheet, temporarily disable it to prevent oklch parse crashes
+                if (!sheet.href.includes('css/style.css')) {
+                    sheet.disabled = true;
+                    disabledSheets.push(sheet);
+                }
+            } else {
+                // Inline <style> tag
+                const owner = sheet.ownerNode;
+                if (owner && owner.innerHTML && owner.innerHTML.includes('oklch')) {
+                    sheet.disabled = true;
+                    disabledSheets.push(sheet);
+                }
+            }
+        } catch (e) {
+            // Security error indicates cross-origin injected stylesheets (like Vercel toolbar or extensions)
+            // Disable it to prevent html2canvas oklch crash
+            try {
+                sheet.disabled = true;
+                disabledSheets.push(sheet);
+            } catch (err) {
+                console.warn('Could not disable stylesheet', err);
+            }
+        }
+    }
+    
     // Slight timeout to ensure layout updates before capturing
     setTimeout(() => {
         html2canvas(targetElement, {
             backgroundColor: '#11141B', // Match --color-bg-panel
             scale: 2, // High resolution
-            logging: true, // Enable logging for troubleshooting
+            logging: false, // Turn off logs
             useCORS: false,
             allowTaint: true,
             scrollX: 0,
             scrollY: 0
         }).then(canvas => {
             targetElement.classList.remove('capturing');
+            
+            // Restore stylesheets
+            disabledSheets.forEach(sheet => {
+                try { sheet.disabled = false; } catch (e) {}
+            });
             
             const link = document.createElement('a');
             link.download = `${fileName}.png`;
@@ -823,6 +859,12 @@ function runCapture(targetId, fileName) {
         }).catch(err => {
             console.error('Capture failed', err);
             targetElement.classList.remove('capturing');
+            
+            // Restore stylesheets on error
+            disabledSheets.forEach(sheet => {
+                try { sheet.disabled = false; } catch (e) {}
+            });
+            
             showToast(`เกิดข้อผิดพลาด: ${err.message || err}`, 'error');
         });
     }, 200);
