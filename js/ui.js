@@ -856,7 +856,10 @@ function openDbModal() {
     
     // Load config
     const config = history.getSupabaseConfig();
-    if (el.dbUrl) el.dbUrl.value = config.url;
+    
+    // Pre-fill with the user's Supabase URL by default
+    const defaultUrl = 'https://mfzilblyhrvbucqruqmq.supabase.co';
+    if (el.dbUrl) el.dbUrl.value = config.url || defaultUrl;
     if (el.dbKey) el.dbKey.value = config.key;
     
     // Update status badge
