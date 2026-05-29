@@ -799,36 +799,40 @@ function runCapture(targetId, fileName) {
     // Add capturing class to hide buttons and scrollbars
     targetElement.classList.add('capturing');
     
-    // Defensive Style Sheet Bypass: Temporarily disable external/injected sheets containing oklch
-    const disabledSheets = [];
-    for (let i = 0; i < document.styleSheets.length; i++) {
-        const sheet = document.styleSheets[i];
+    // Defensive Stylesheet Node Removal: Temporarily remove external/injected style and link elements containing oklch
+    const removedNodes = [];
+    const styleNodes = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'));
+    
+    styleNodes.forEach(node => {
         try {
-            if (sheet.href) {
-                // If it's not our main stylesheet, temporarily disable it to prevent oklch parse crashes
-                if (!sheet.href.includes('css/style.css')) {
-                    sheet.disabled = true;
-                    disabledSheets.push(sheet);
+            // Keep our main stylesheet!
+            if (node.tagName === 'LINK' && node.href && node.href.includes('css/style.css')) {
+                return;
+            }
+            
+            // Check if it's an inline style containing oklch, or if it is an external link sheet (to be safe, we temporarily remove all external sheets except our style.css!)
+            let shouldRemove = false;
+            if (node.tagName === 'STYLE') {
+                if (node.innerHTML && node.innerHTML.includes('oklch')) {
+                    shouldRemove = true;
                 }
-            } else {
-                // Inline <style> tag
-                const owner = sheet.ownerNode;
-                if (owner && owner.innerHTML && owner.innerHTML.includes('oklch')) {
-                    sheet.disabled = true;
-                    disabledSheets.push(sheet);
+            } else if (node.tagName === 'LINK') {
+                // Remove all other link stylesheets (like Vercel toolbar or google fonts) during capture to prevent CORS & oklch rejections
+                shouldRemove = true;
+            }
+            
+            if (shouldRemove) {
+                const parent = node.parentNode;
+                if (parent) {
+                    const nextSibling = node.nextSibling;
+                    parent.removeChild(node);
+                    removedNodes.push({ node, parent, nextSibling });
                 }
             }
         } catch (e) {
-            // Security error indicates cross-origin injected stylesheets (like Vercel toolbar or extensions)
-            // Disable it to prevent html2canvas oklch crash
-            try {
-                sheet.disabled = true;
-                disabledSheets.push(sheet);
-            } catch (err) {
-                console.warn('Could not disable stylesheet', err);
-            }
+            console.warn('Error evaluating stylesheet node during capture:', e);
         }
-    }
+    });
     
     // Slight timeout to ensure layout updates before capturing
     setTimeout(() => {
@@ -843,9 +847,17 @@ function runCapture(targetId, fileName) {
         }).then(canvas => {
             targetElement.classList.remove('capturing');
             
-            // Restore stylesheets
-            disabledSheets.forEach(sheet => {
-                try { sheet.disabled = false; } catch (e) {}
+            // Restore all removed stylesheet elements in their exact original order
+            removedNodes.forEach(({ node, parent, nextSibling }) => {
+                try {
+                    if (nextSibling && nextSibling.parentNode === parent) {
+                        parent.insertBefore(node, nextSibling);
+                    } else {
+                        parent.appendChild(node);
+                    }
+                } catch (e) {
+                    console.error('Failed to restore stylesheet node:', e);
+                }
             });
             
             const link = document.createElement('a');
@@ -860,9 +872,17 @@ function runCapture(targetId, fileName) {
             console.error('Capture failed', err);
             targetElement.classList.remove('capturing');
             
-            // Restore stylesheets on error
-            disabledSheets.forEach(sheet => {
-                try { sheet.disabled = false; } catch (e) {}
+            // Restore all removed stylesheet elements in their exact original order on error
+            removedNodes.forEach(({ node, parent, nextSibling }) => {
+                try {
+                    if (nextSibling && nextSibling.parentNode === parent) {
+                        parent.insertBefore(node, nextSibling);
+                    } else {
+                        parent.appendChild(node);
+                    }
+                } catch (e) {
+                    console.error('Failed to restore stylesheet node:', e);
+                }
             });
             
             showToast(`เกิดข้อผิดพลาด: ${err.message || err}`, 'error');
