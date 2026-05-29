@@ -770,7 +770,14 @@ function handleDownloadImage(targetId, fileName) {
         const s = document.createElement('script');
         s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
         s.onload = () => runCapture(targetId, fileName);
-        s.onerror = () => showToast('ไม่สามารถเชื่อมต่อระบบสร้างรูปภาพได้', 'error');
+        s.onerror = () => {
+            // CDN Failover Chain to jsdelivr
+            const s2 = document.createElement('script');
+            s2.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+            s2.onload = () => runCapture(targetId, fileName);
+            s2.onerror = () => showToast('ไม่สามารถเชื่อมต่อระบบสร้างรูปภาพได้ (CDN Error)', 'error');
+            document.head.appendChild(s2);
+        };
         document.head.appendChild(s);
     } else {
         runCapture(targetId, fileName);
@@ -797,13 +804,11 @@ function runCapture(targetId, fileName) {
         html2canvas(targetElement, {
             backgroundColor: '#11141B', // Match --color-bg-panel
             scale: 2, // High resolution
-            logging: false,
+            logging: true, // Enable logging for troubleshooting
             useCORS: false,
             allowTaint: true,
             scrollX: 0,
-            scrollY: 0,
-            windowWidth: targetElement.scrollWidth,
-            windowHeight: targetElement.scrollHeight
+            scrollY: 0
         }).then(canvas => {
             targetElement.classList.remove('capturing');
             
@@ -818,7 +823,7 @@ function runCapture(targetId, fileName) {
         }).catch(err => {
             console.error('Capture failed', err);
             targetElement.classList.remove('capturing');
-            showToast('เกิดข้อผิดพลาดในการบันทึกรูปภาพ', 'error');
+            showToast(`เกิดข้อผิดพลาด: ${err.message || err}`, 'error');
         });
     }, 200);
 }
