@@ -439,6 +439,26 @@ function registerEventListeners() {
         btnRefreshLogs.addEventListener('click', renderAccessLogs);
     }
 
+    // Logout Action
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            sessionStorage.removeItem('calc_active_user');
+            
+            // Clear inputs
+            const passField = document.getElementById('login-password');
+            if (passField) passField.value = '';
+            
+            // Show overlay
+            const loginOverlay = document.getElementById('login-overlay');
+            if (loginOverlay) {
+                loginOverlay.classList.add('active');
+            }
+            
+            showToast('ออกจากระบบสำเร็จ 🚪', 'success');
+        });
+    }
+
 }
 
 /**

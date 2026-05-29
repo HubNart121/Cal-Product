@@ -67,12 +67,17 @@
                 </div>
 
                 <!-- Security Controls -->
-                <div class="deck-portability" style="border-top: none;">
-                    <button class="btn btn-secondary btn-sm" id="btn-change-credentials" title="Change Username & Password">
-                        🔐 CHANGE KEY
-                    </button>
-                    <button class="btn btn-secondary btn-sm" id="btn-view-logs" title="View System Access Logs">
-                        📝 AUDIT LOGS
+                <div class="deck-portability" style="border-top: none; grid-template-columns: 1fr; gap: 0.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%;">
+                        <button class="btn btn-secondary btn-sm" id="btn-change-credentials" title="Change Username & Password">
+                            🔐 CHANGE KEY
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="btn-view-logs" title="View System Access Logs">
+                            📝 AUDIT LOGS
+                        </button>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="btn-logout" title="Lock Workspace & Log Out" style="color: var(--color-negative); border-color: rgba(255, 23, 68, 0.35); width: 100%; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                        🚪 LOGOUT SYSTEM
                     </button>
                 </div>
 
