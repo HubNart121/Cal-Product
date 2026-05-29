@@ -1030,6 +1030,70 @@ body {
         border-left: none;
         border-top: 1px solid var(--color-border-low);
     }
+
+    /* Header layout optimizations on mobile */
+    .app-header {
+        padding: 0.5rem 1rem;
+        height: 60px;
+    }
+    
+    .header-logo h1 {
+        font-size: 0.95rem !important;
+        white-space: nowrap;
+    }
+    
+    .logo-sub {
+        display: none !important;
+    }
+    
+    .header-controls {
+        gap: 0.35rem;
+    }
+    
+    .system-status {
+        font-size: 0.65rem;
+        gap: 4px;
+    }
+    
+    .system-status span:not(.status-dot) {
+        display: none !important;
+    }
+    
+    #btn-toggle-history {
+        padding: 0.35rem 0.5rem !important;
+        font-size: 0.6rem !important;
+    }
+
+    /* Panel header stacked layout on mobile */
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .panel-title {
+        width: 100%;
+    }
+
+    .panel-title h2 {
+        font-size: 0.95rem !important;
+    }
+
+    .panel-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.4rem;
+        justify-content: flex-start;
+    }
+
+    .panel-actions .btn {
+        flex: 1;
+        padding: 0.45rem 0.35rem !important;
+        font-size: 0.6rem !important;
+        white-space: nowrap;
+    }
 }
 
 /* Hide mobile toggle by default on Desktop viewports */
