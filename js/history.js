@@ -11,20 +11,12 @@ let supabaseClient = null;
  * Initializes the Supabase client using stored credentials.
  */
 export function initSupabase() {
-    const defaultUrl = 'https://mfzilblyhrvbucqruqmq.supabase.co';
-    const defaultKey = 'sb_publishable_8XJ_w9u3fzybwdUrqXtDrQ_uxhXQJKG';
-
-    const url = localStorage.getItem('pricing_projects_supabase_url') || defaultUrl;
-    const key = localStorage.getItem('pricing_projects_supabase_key') || defaultKey;
-
-    if (url && key) {
-        try {
-            supabaseClient = createClient(url.trim(), key.trim());
-        } catch (e) {
-            console.error('Failed to initialize Supabase client:', e);
-            supabaseClient = null;
-        }
-    } else {
+    const url = 'https://mfzilblyhrvbucqruqmq.supabase.co';
+    const key = 'sb_publishable_8XJ_w9u3fzybwdUrqXtDrQ_uxhXQJKG';
+    try {
+        supabaseClient = createClient(url, key);
+    } catch (e) {
+        console.error('Failed to initialize Supabase client:', e);
         supabaseClient = null;
     }
 }
@@ -41,32 +33,27 @@ export function isSupabaseConfigured() {
 }
 
 /**
- * Retrieves the current Supabase configuration credentials.
- * @returns {Object} URL and Key object
+ * Retrieves the current Supabase configuration credentials (read-only fallbacks).
  */
 export function getSupabaseConfig() {
     return {
-        url: localStorage.getItem('pricing_projects_supabase_url') || '',
-        key: localStorage.getItem('pricing_projects_supabase_key') || ''
+        url: 'https://mfzilblyhrvbucqruqmq.supabase.co',
+        key: 'sb_publishable_8XJ_w9u3fzybwdUrqXtDrQ_uxhXQJKG'
     };
 }
 
 /**
- * Saves Supabase configurations and re-initializes client.
+ * Saves Supabase configurations (Deprecated - edit via Antigravity instead)
  */
 export function saveSupabaseConfig(url, key) {
-    localStorage.setItem('pricing_projects_supabase_url', url.trim());
-    localStorage.setItem('pricing_projects_supabase_key', key.trim());
-    initSupabase();
+    console.warn('Database edits are restricted. Please modify credentials via Antigravity instead.');
 }
 
 /**
- * Clears Supabase settings and disables cloud synchronization.
+ * Clears Supabase settings (Deprecated - edit via Antigravity instead)
  */
 export function clearSupabaseConfig() {
-    localStorage.removeItem('pricing_projects_supabase_url');
-    localStorage.removeItem('pricing_projects_supabase_key');
-    supabaseClient = null;
+    console.warn('Database edits are restricted. Please modify credentials via Antigravity instead.');
 }
 
 /**

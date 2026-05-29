@@ -105,16 +105,7 @@ const el = {
     // Shell Containers
     toastContainer: document.getElementById('toast-container'),
 
-    // Supabase DB Sync Panel Elements
-    btnDbConfig: document.getElementById('btn-db-config'),
-    dbModal: document.getElementById('db-config-modal'),
-    btnCloseDbModal: document.getElementById('btn-close-db-modal'),
-    dbUrl: document.getElementById('db-supabase-url'),
-    dbKey: document.getElementById('db-supabase-key'),
-    dbConnectionStatus: document.getElementById('db-connection-status'),
-    btnTestDb: document.getElementById('btn-test-db'),
-    btnMigrateDb: document.getElementById('btn-migrate-local-to-db'),
-    btnSaveDb: document.getElementById('btn-save-db-settings'),
+    // Supabase DB Sync Panel Elements (Read-Only Status)
     cloudStatusBadge: document.getElementById('cloud-status-badge'),
     cloudStatusDot: document.getElementById('cloud-status-dot'),
     cloudStatusText: document.getElementById('cloud-status-text')
@@ -271,40 +262,6 @@ function registerEventListeners() {
         }
     });
 
-    // Supabase DB Modal Triggers
-    if (el.btnDbConfig) {
-        el.btnDbConfig.addEventListener('click', openDbModal);
-    }
-    if (el.cloudStatusBadge) {
-        el.cloudStatusBadge.addEventListener('click', openDbModal);
-    }
-    if (el.btnCloseDbModal) {
-        el.btnCloseDbModal.addEventListener('click', closeDbModal);
-    }
-
-    // Test connection
-    if (el.btnTestDb) {
-        el.btnTestDb.addEventListener('click', handleTestDbConnection);
-    }
-
-    // Save DB config
-    if (el.btnSaveDb) {
-        el.btnSaveDb.addEventListener('click', handleSaveDbSettings);
-    }
-
-    // Sync Local projects to cloud
-    if (el.btnMigrateDb) {
-        el.btnMigrateDb.addEventListener('click', handleMigrateLocalToDb);
-    }
-
-    // Close DB modal when clicking outside content
-    if (el.dbModal) {
-        el.dbModal.addEventListener('click', (e) => {
-            if (e.target === el.dbModal) {
-                closeDbModal();
-            }
-        });
-    }
 }
 
 /**
@@ -921,55 +878,6 @@ function refreshUrlActionButtons() {
 }
 
 /**
- * Opens the Supabase configuration modal and loads existing credentials
- */
-function openDbModal() {
-    if (!el.dbModal) return;
-    
-    // Load config
-    const config = history.getSupabaseConfig();
-    
-    // Pre-fill with the user's Supabase URL and Key by default
-    const defaultUrl = 'https://mfzilblyhrvbucqruqmq.supabase.co';
-    const defaultKey = 'sb_publishable_8XJ_w9u3fzybwdUrqXtDrQ_uxhXQJKG';
-    if (el.dbUrl) el.dbUrl.value = config.url || defaultUrl;
-    if (el.dbKey) el.dbKey.value = config.key || defaultKey;
-    
-    // Update status badge
-    updateDbModalStatus();
-    
-    // Show modal
-    el.dbModal.style.display = 'flex';
-}
-
-/**
- * Closes the Supabase configuration modal
- */
-function closeDbModal() {
-    if (el.dbModal) {
-        el.dbModal.style.display = 'none';
-    }
-}
-
-/**
- * Updates the connection status badge in the modal UI
- */
-function updateDbModalStatus() {
-    if (!el.dbConnectionStatus || !el.btnMigrateDb) return;
-    
-    const isConfigured = history.isSupabaseConfigured();
-    if (isConfigured) {
-        el.dbConnectionStatus.className = 'db-status-badge status-success';
-        el.dbConnectionStatus.innerHTML = '<span class="status-dot green"></span> CONNECTED (SUPABASE CLOUD MODE)';
-        el.btnMigrateDb.removeAttribute('disabled');
-    } else {
-        el.dbConnectionStatus.className = 'db-status-badge status-offline';
-        el.dbConnectionStatus.innerHTML = '<span class="status-dot orange"></span> OFFLINE (LOCAL STORAGE MODE)';
-        el.btnMigrateDb.setAttribute('disabled', 'true');
-    }
-}
-
-/**
  * Updates the tiny cloud status badge in the main header
  */
 function updateCloudStatusBadge() {
@@ -982,101 +890,5 @@ function updateCloudStatusBadge() {
     } else {
         el.cloudStatusDot.className = 'status-dot orange';
         el.cloudStatusText.textContent = 'OFFLINE MODE';
-    }
-}
-
-/**
- * Validates and tests database credentials in real-time
- */
-async function handleTestDbConnection() {
-    if (!el.dbUrl || !el.dbKey || !el.dbConnectionStatus || !el.btnTestDb) return;
-    
-    const url = el.dbUrl.value.trim();
-    const key = el.dbKey.value.trim();
-    
-    if (!url || !key) {
-        showToast('กรุณากรอกข้อมูล Supabase URL และ Key ให้ครบถ้วน', 'error');
-        return;
-    }
-    
-    el.btnTestDb.setAttribute('disabled', 'true');
-    el.btnTestDb.textContent = '⚡ TESTING...';
-    
-    const result = await history.testSupabaseConnection(url, key);
-    
-    el.btnTestDb.removeAttribute('disabled');
-    el.btnTestDb.textContent = '⚡ TEST CONNECTION';
-    
-    if (result.success) {
-        el.dbConnectionStatus.className = 'db-status-badge status-success';
-        el.dbConnectionStatus.innerHTML = '<span class="status-dot green"></span> CONNECTED (SUPABASE CLOUD MODE)';
-        if (el.btnMigrateDb) el.btnMigrateDb.removeAttribute('disabled');
-        showToast('เชื่อมต่อฐานข้อมูล Supabase สำเร็จ 🟢', 'success');
-    } else {
-        el.dbConnectionStatus.className = 'db-status-badge status-error';
-        el.dbConnectionStatus.innerHTML = `<span class="status-dot red"></span> ERROR: ${result.message.toUpperCase()}`;
-        if (el.btnMigrateDb) el.btnMigrateDb.setAttribute('disabled', 'true');
-        showToast(`ล้มเหลว: ${result.message}`, 'error');
-    }
-}
-
-/**
- * Saves configuration values and starts cloud synchronization
- */
-async function handleSaveDbSettings() {
-    if (!el.dbUrl || !el.dbKey) return;
-    
-    const url = el.dbUrl.value.trim();
-    const key = el.dbKey.value.trim();
-    
-    if (url && key) {
-        // Test connection first
-        const test = await history.testSupabaseConnection(url, key);
-        if (!test.success) {
-            showToast('บันทึกไม่สำเร็จ: การเชื่อมต่อฐานข้อมูลล้มเหลว', 'error');
-            return;
-        }
-        
-        history.saveSupabaseConfig(url, key);
-        showToast('บันทึกการตั้งค่า Supabase เรียบร้อยแล้ว 💾', 'success');
-    } else {
-        history.clearSupabaseConfig();
-        showToast('ยกเลิกการเชื่อมต่อระบบคลาวด์แล้ว สลับเป็น Offline Mode 💾', 'success');
-    }
-    
-    updateCloudStatusBadge();
-    closeDbModal();
-    
-    // Refresh Sidebar instantly if there were cloud changes
-    if (history.isSupabaseConfigured()) {
-        showToast('กำลังซิงโครไนซ์ข้อมูลคลาวด์...', 'success');
-        const sync = await history.syncFromCloud();
-        if (sync.success && sync.changed) {
-            renderHistoryList();
-            showToast('ซิงค์ข้อมูลล่าสุดสำเร็จ 🟢', 'success');
-        }
-    }
-}
-
-/**
- * Migrates all local calculations to cloud Supabase table
- */
-async function handleMigrateLocalToDb() {
-    if (!el.btnMigrateDb) return;
-    
-    el.btnMigrateDb.setAttribute('disabled', 'true');
-    el.btnMigrateDb.textContent = '📤 SYNCING...';
-    
-    showToast('กำลังเตรียมย้ายข้อมูลโลคอลขึ้นสู่คลาวด์...', 'success');
-    
-    const result = await history.syncLocalToCloud();
-    
-    el.btnMigrateDb.removeAttribute('disabled');
-    el.btnMigrateDb.textContent = '📤 SYNC TO CLOUD';
-    
-    if (result.success) {
-        showToast(`โอนย้ายสำเร็จ! ซิงค์ทั้งหมด ${result.count} รายการขึ้นสู่ Supabase เรียบร้อย 🎉`, 'success');
-    } else {
-        showToast(`เกิดข้อผิดพลาดในการซิงค์ข้อมูล: ${result.message}`, 'error');
     }
 }
