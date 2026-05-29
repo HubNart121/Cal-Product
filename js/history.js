@@ -1,14 +1,218 @@
 /**
- * History Manager - LocalStorage persistence & JSON Backup Portability for Pricing Calculator
+ * History Manager - Offline-First Supabase Sync Engine & LocalStorage Caching for Pricing Calculator
  */
+
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const STORAGE_KEY = 'pricing_projects_deck';
+let supabaseClient = null;
 
 /**
- * Retrieves all stored projects from LocalStorage.
+ * Initializes the Supabase client using stored credentials.
+ */
+export function initSupabase() {
+    const url = localStorage.getItem('pricing_projects_supabase_url');
+    const key = localStorage.getItem('pricing_projects_supabase_key');
+    if (url && key) {
+        try {
+            supabaseClient = createClient(url.trim(), key.trim());
+        } catch (e) {
+            console.error('Failed to initialize Supabase client:', e);
+            supabaseClient = null;
+        }
+    } else {
+        supabaseClient = null;
+    }
+}
+
+// Automatically bootstrap Supabase configuration on import
+initSupabase();
+
+/**
+ * Checks if Supabase client is active.
+ * @returns {boolean} True if configured successfully
+ */
+export function isSupabaseConfigured() {
+    return !!supabaseClient;
+}
+
+/**
+ * Retrieves the current Supabase configuration credentials.
+ * @returns {Object} URL and Key object
+ */
+export function getSupabaseConfig() {
+    return {
+        url: localStorage.getItem('pricing_projects_supabase_url') || '',
+        key: localStorage.getItem('pricing_projects_supabase_key') || ''
+    };
+}
+
+/**
+ * Saves Supabase configurations and re-initializes client.
+ */
+export function saveSupabaseConfig(url, key) {
+    localStorage.setItem('pricing_projects_supabase_url', url.trim());
+    localStorage.setItem('pricing_projects_supabase_key', key.trim());
+    initSupabase();
+}
+
+/**
+ * Clears Supabase settings and disables cloud synchronization.
+ */
+export function clearSupabaseConfig() {
+    localStorage.removeItem('pricing_projects_supabase_url');
+    localStorage.removeItem('pricing_projects_supabase_key');
+    supabaseClient = null;
+}
+
+/**
+ * Tests connection with specific Supabase endpoints.
+ */
+export async function testSupabaseConnection(url, key) {
+    if (!url || !key) return { success: false, message: 'Missing URL or Key.' };
+    try {
+        const tempClient = createClient(url.trim(), key.trim());
+        const { error } = await tempClient
+            .from('pricing_projects')
+            .select('id')
+            .limit(1);
+        
+        if (error) {
+            return { success: false, message: error.message };
+        }
+        return { success: true, message: 'Connection successful!' };
+    } catch (e) {
+        return { success: false, message: e.message || 'Network error occurred.' };
+    }
+}
+
+/**
+ * Pulls all projects from Supabase, merges them with local storage using timestamps, and writes back.
+ * @returns {Promise<Object>} Success state and whether modifications were merged
+ */
+export async function syncFromCloud() {
+    if (!supabaseClient) return { success: false, message: 'Supabase is not configured.' };
+    try {
+        const { data, error } = await supabaseClient
+            .from('pricing_projects')
+            .select('*')
+            .order('timestamp', { ascending: false });
+        
+        if (error) {
+            console.error('Failed to sync from cloud:', error);
+            return { success: false, message: error.message };
+        }
+
+        if (!data) return { success: true, changed: false };
+
+        const localProjects = getLocalProjectsOnly();
+        const localMap = new Map(localProjects.map(p => [p.id, p]));
+        let changed = false;
+
+        for (const cloudProj of data) {
+            const localProj = localMap.get(cloudProj.id);
+            if (!localProj) {
+                localProjects.push(cloudProj);
+                changed = true;
+            } else {
+                const cloudTime = new Date(cloudProj.timestamp).getTime();
+                const localTime = new Date(localProj.timestamp).getTime();
+                if (cloudTime > localTime) {
+                    const idx = localProjects.findIndex(p => p.id === cloudProj.id);
+                    localProjects[idx] = cloudProj;
+                    changed = true;
+                } else if (localTime > cloudTime) {
+                    // Local is newer, silently update cloud in background
+                    backgroundSync(localProj, 'upsert');
+                }
+            }
+        }
+
+        // Sort by timestamp descending
+        localProjects.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        if (changed) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localProjects));
+        }
+
+        return { success: true, changed };
+    } catch (e) {
+        console.error('Failed syncing from cloud:', e);
+        return { success: false, message: e.message };
+    }
+}
+
+/**
+ * Syncs all local projects to the cloud in bulk.
+ */
+export async function syncLocalToCloud() {
+    if (!supabaseClient) return { success: false, message: 'Supabase is not configured.' };
+    try {
+        const localProjects = getLocalProjectsOnly();
+        if (localProjects.length === 0) {
+            return { success: true, count: 0, message: 'No local projects to sync.' };
+        }
+
+        const rows = localProjects.map(p => ({
+            id: p.id,
+            name: p.name,
+            timestamp: p.timestamp,
+            inputs: p.inputs,
+            outputs: p.outputs
+        }));
+
+        const { error } = await supabaseClient
+            .from('pricing_projects')
+            .upsert(rows);
+        
+        if (error) {
+            console.error('Bulk sync failed:', error);
+            return { success: false, message: error.message };
+        }
+
+        return { 
+            success: true, 
+            count: localProjects.length, 
+            message: `Successfully synced ${localProjects.length} projects to the cloud.` 
+        };
+    } catch (e) {
+        console.error('Sync failed:', e);
+        return { success: false, message: e.message };
+    }
+}
+
+/**
+ * Internal background sync helper.
+ */
+async function backgroundSync(project, action) {
+    if (!supabaseClient) return;
+    try {
+        if (action === 'delete') {
+            await supabaseClient
+                .from('pricing_projects')
+                .delete()
+                .eq('id', project.id);
+        } else if (action === 'upsert') {
+            await supabaseClient
+                .from('pricing_projects')
+                .upsert({
+                    id: project.id,
+                    name: project.name,
+                    timestamp: project.timestamp,
+                    inputs: project.inputs,
+                    outputs: project.outputs
+                });
+        }
+    } catch (e) {
+        console.error(`Background cloud sync failed for action "${action}":`, e);
+    }
+}
+
+/**
+ * Retrieves all stored projects from LocalStorage (synchronous fallback).
  * @returns {Array} List of stored project objects
  */
-export function getProjects() {
+function getLocalProjectsOnly() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         return raw ? JSON.parse(raw) : [];
@@ -19,10 +223,18 @@ export function getProjects() {
 }
 
 /**
- * Saves a new calculation run to the project history.
+ * Retrieves all stored projects (Synchronous Offline-First UI compatibility).
+ * @returns {Array} List of stored project objects
+ */
+export function getProjects() {
+    return getLocalProjectsOnly();
+}
+
+/**
+ * Saves a new calculation run to local and cloud database.
  */
 export function saveProject(name, inputs, outputs) {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     
     const newProject = {
         id: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -54,6 +266,10 @@ export function saveProject(name, inputs, outputs) {
 
     projects.unshift(newProject);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    
+    // Background cloud synchronization
+    backgroundSync(newProject, 'upsert');
+
     return newProject;
 }
 
@@ -61,7 +277,7 @@ export function saveProject(name, inputs, outputs) {
  * Deletes a project run by its unique ID.
  */
 export function deleteProject(id) {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     const filtered = projects.filter(p => p.id !== id);
     
     if (projects.length === filtered.length) {
@@ -69,6 +285,10 @@ export function deleteProject(id) {
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    
+    // Background cloud synchronization
+    backgroundSync({ id }, 'delete');
+
     return true;
 }
 
@@ -76,7 +296,7 @@ export function deleteProject(id) {
  * Searches and filters projects by name.
  */
 export function searchProjects(query) {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     if (!query) return projects;
     
     const q = query.toLowerCase().trim();
@@ -87,7 +307,7 @@ export function searchProjects(query) {
  * Exports all historical projects into a JSON file download.
  */
 export function exportBackup() {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     const dataStr = JSON.stringify(projects, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -153,13 +373,18 @@ export function importBackup(jsonString) {
             return { success: false, message: 'No valid pricing projects found in backup.' };
         }
         
-        const currentProjects = getProjects();
+        const currentProjects = getLocalProjectsOnly();
         const currentIds = new Set(currentProjects.map(p => p.id));
         
         const newProjects = validatedProjects.filter(p => !currentIds.has(p.id));
         const merged = [...newProjects, ...currentProjects];
         
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+
+        // Push new imports to cloud in bulk in background
+        if (newProjects.length > 0) {
+            syncLocalToCloud();
+        }
         
         return {
             success: true,
@@ -176,7 +401,7 @@ export function importBackup(jsonString) {
  * Updates an existing historical project run by its unique ID.
  */
 export function updateProject(id, name, inputs, outputs) {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     const idx = projects.findIndex(p => p.id === id);
     
     if (idx === -1) {
@@ -212,20 +437,21 @@ export function updateProject(id, name, inputs, outputs) {
     };
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    
+    // Background cloud synchronization
+    backgroundSync(projects[idx], 'upsert');
+
     return projects[idx];
 }
 
 /**
  * Duplicates a project run by its ID, appends ' (Copy)' to its name, and saves it.
- * @param {string} id - Project ID to duplicate
- * @returns {Object|null} The newly created cloned project, or null if failed
  */
 export function duplicateProject(id) {
-    const projects = getProjects();
+    const projects = getLocalProjectsOnly();
     const target = projects.find(p => p.id === id);
     if (!target) return null;
     
-    // Create new project inputs by copying target inputs
     const clonedInputs = { ...target.inputs };
     const clonedOutputs = { ...target.outputs };
     const duplicatedName = target.name + ' (Copy)';
