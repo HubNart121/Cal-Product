@@ -798,7 +798,12 @@ function runCapture(targetId, fileName) {
             backgroundColor: '#11141B', // Match --color-bg-panel
             scale: 2, // High resolution
             logging: false,
-            useCORS: true
+            useCORS: false,
+            allowTaint: true,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: targetElement.scrollWidth,
+            windowHeight: targetElement.scrollHeight
         }).then(canvas => {
             targetElement.classList.remove('capturing');
             
