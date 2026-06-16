@@ -100,6 +100,7 @@ export async function syncFromCloud() {
         const localMap = new Map(localProjects.map(p => [p.id, p]));
         let changed = false;
 
+        // 1. Process projects from cloud to local
         for (const cloudProj of data) {
             const localProj = localMap.get(cloudProj.id);
             if (!localProj) {
@@ -117,6 +118,24 @@ export async function syncFromCloud() {
                     backgroundSync(localProj, 'upsert');
                 }
             }
+        }
+
+        // 2. Bi-directional sync: Upload local-only projects to the cloud
+        const cloudIds = new Set(data.map(p => p.id));
+        const localOnlyProjects = localProjects.filter(p => !cloudIds.has(p.id));
+        if (localOnlyProjects.length > 0) {
+            const rowsToUpload = localOnlyProjects.map(p => ({
+                id: p.id,
+                name: p.name,
+                timestamp: p.timestamp,
+                inputs: p.inputs,
+                outputs: p.outputs
+            }));
+            
+            supabaseClient
+                .from('pricing_projects')
+                .upsert(rowsToUpload)
+                .catch(err => console.error('Failed to upload local-only projects to cloud:', err));
         }
 
         // Sort by timestamp descending
