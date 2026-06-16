@@ -66,6 +66,13 @@
                     </label>
                 </div>
 
+                <!-- Cloud Sync Button -->
+                <div class="deck-portability" style="border-top: none; grid-template-columns: 1fr;">
+                    <button class="btn btn-secondary btn-sm" id="btn-force-sync" title="อัปโหลดข้อมูลทั้งหมดขึ้น Cloud ทันที" style="color: var(--color-neutral); border-color: rgba(0,229,255,0.3); width: 100%;">
+                        ☁️ SYNC TO CLOUD
+                    </button>
+                </div>
+
                 <!-- Security Controls -->
                 <div class="deck-portability" style="border-top: none; grid-template-columns: 1fr; gap: 0.5rem;">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%;">
@@ -513,10 +520,10 @@
         </div>
     </div>
 
-    <!-- Application Script Modules -->
-    <script type="module" src="js/calculator.js"></script>
-    <script type="module" src="js/history.js"></script>
-    <script type="module" src="js/ui.js"></script>
-    <script type="module" src="js/app.js"></script>
+    <!-- Application Script Modules (v=20260616 cache-bust) -->
+    <script type="module" src="js/calculator.js?v=20260616"></script>
+    <script type="module" src="js/history.js?v=20260616"></script>
+    <script type="module" src="js/ui.js?v=20260616"></script>
+    <script type="module" src="js/app.js?v=20260616"></script>
 </body>
 </html>

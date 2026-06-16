@@ -54,6 +54,7 @@ const el = {
     projectList: document.getElementById('project-list'),
     btnExport: document.getElementById('btn-export-backup'),
     importInput: document.getElementById('import-file-input'),
+    btnForceSync: document.getElementById('btn-force-sync'),
     
     // Comparative Panel Overlay
     comparativePanel: document.getElementById('comparative-calc-panel'),
@@ -456,6 +457,33 @@ function registerEventListeners() {
             }
             
             showToast('ออกจากระบบสำเร็จ 🚪', 'success');
+        });
+    }
+
+    // Force Sync all local projects to Cloud
+    if (el.btnForceSync) {
+        el.btnForceSync.addEventListener('click', async () => {
+            const btn = el.btnForceSync;
+            btn.disabled = true;
+            btn.textContent = '⏳ SYNCING...';
+            try {
+                // Step 1: Push all local → Cloud
+                const pushRes = await history.syncLocalToCloud();
+                // Step 2: Pull Cloud → Local (merge new data)
+                const pullRes = await history.syncFromCloud();
+                renderHistoryList();
+                if (pushRes.success) {
+                    showToast(`☁️ ซิงค์สำเร็จ! อัปโหลด ${pushRes.count ?? 'ทั้งหมด'} รายการขึ้น Cloud เรียบร้อย 🟢`, 'success');
+                } else {
+                    showToast('⚠️ ซิงค์ไม่สมบูรณ์: ' + (pushRes.message || 'ไม่สามารถเชื่อมต่อ Cloud'), 'error');
+                }
+            } catch (err) {
+                console.error('Force sync error:', err);
+                showToast('❌ ซิงค์ล้มเหลว: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '☁️ SYNC TO CLOUD';
+            }
         });
     }
 
